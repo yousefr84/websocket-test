@@ -11,8 +11,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # گرفتن group_name از URL
         self.room_group_name = self.scope['url_route']['kwargs']['group_name']
 
-        # احراز هویت با توکن JWT
-        token = self.scope['query_string'].decode().split('token=')[-1]
+        # احراز هویت با کوکی
+        token = self.get_cookie('access')
         user = await self.authenticate_user(token)
         if not user:
             await self.close()
@@ -28,12 +28,46 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-        # ارسال پیام خوش‌آمدگویی
+        # پیام خوش آمدگویی
         current_time = timezone.now().strftime("%H:%M:%S")
         await self.send(text_data=json.dumps({
             'type': 'chat_message',
-            'message': f'سلام {self.user.username} الان ساعت {current_time} است'
+            'message': f'hi {self.user.username} now is  {current_time}'
         }))
+
+    async def disconnect(self, close_code):
+        # اینجا باید چک کنی که room_group_name وجود دارد یا نه
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+
+    async def receive(self, text_data):
+        current_time = timezone.now().strftime("%H:%M:%S")
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': f'now is {current_time}'
+        }))
+
+
+    async def chat_message(self, event):
+        message = event['message']
+        current_time = timezone.now().strftime("%H:%M:%S")
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': f'{self.user.username} now is  {current_time}'
+        }))
+
+    def get_cookie(self, name):
+        cookie_header = dict(self.scope['headers']).get(b'cookie', b'').decode()
+        cookies = {}
+        for chunk in cookie_header.split(';'):
+            if '=' in chunk:
+                k, v = chunk.strip().split('=', 1)
+                cookies[k] = v
+        return cookies.get(name)
+
 
     @database_sync_to_async
     def authenticate_user(self, token):
@@ -45,16 +79,3 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except (InvalidToken, TokenError):
             return None
 
-    async def disconnect(self, close_code):
-        if hasattr(self, 'room_group_name'):
-            await self.channel_layer.group_discard(
-                self.room_group_name,
-                self.channel_name
-            )
-
-    async def chat_message(self, event):
-        # ارسال پیام به کلاینت
-        await self.send(text_data=json.dumps({
-            'type': 'chat_message',
-            'message': event['message']
-        }))

@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+*.env
+*.venv
+*.DS_Store
+
+# Django
+*.log
+db.sqlite3
+media/
+staticfiles/
+static_root/
+local_settings.py
+
+# VSCode
+.vscode/
+
+# Coverage
+htmlcov/
+.coverage
+.tox/
+.nox/
+.coverage.*
+
+# Migrations (optional)
+**/migrations/*.pyc
+**/migrations/*.pyo
+**/migrations/__pycache__/
+
+# Test
+test_output/
+*.mo
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# System Files
+*.swp
+*.swo
+
+# PyCharm
+.idea/
+
+# Node
+node_modules/
+
+# Channels
+*.sqlite3-shm
+*.sqlite3-wal
+
+# dotenv
+.env.*
+.env
+
+# Redis
+dump.rdb
+
+# Docker
+*.pid
+
+# Backup files
+*~
+

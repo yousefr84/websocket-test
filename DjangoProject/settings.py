@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_simplejwt',
     'testsocket'
 ]
 
@@ -74,11 +76,18 @@ ASGI_APPLICATION = 'DjangoProject.asgi.application'
 
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND' : 'channels.layers.InMemoryChannelLayer',
-    }
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379)],
+        },
+    },
 }
 
-
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -107,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
+AUTH_USER_MODEL = 'testsocket.CustomUser'  # myapp نام اپلیکیشن توئه
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

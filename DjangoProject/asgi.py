@@ -8,18 +8,23 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
 import os
+
+from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
-from channels.auth import AuthMiddlewareStack
-import testsocket.routing
 
+# تنظیم DJANGO_SETTINGS_MODULE و لود اپلیکیشن‌ها
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'DjangoProject.settings')
 
+# لود اپلیکیشن‌های جنگو قبل از هر چیز
+django_asgi_app = get_asgi_application()
+
+# حالا import ماژول‌های وابسته
+import testsocket.routing
+
 application = ProtocolTypeRouter({
-    'http': get_asgi_application(),
+    'http': django_asgi_app,
     'websocket': AuthMiddlewareStack(
-        URLRouter(
-            testsocket.routing.websocket_urlpatterns
-        )
-    )
+        URLRouter(testsocket.routing.websocket_urlpatterns)
+    ),
 })

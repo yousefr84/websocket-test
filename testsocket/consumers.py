@@ -1,35 +1,60 @@
 import json
-from channels.generic.websocket import WebsocketConsumer
-from asgiref.sync import async_to_sync
+from channels.generic.websocket import AsyncWebsocketConsumer
+from django.utils import timezone
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from channels.db import database_sync_to_async
 
 
-class ChatConsumer(WebsocketConsumer):
-    def connect(self):
-        self.room_group_name = 'test_group'
+class ChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        # گرفتن group_name از URL
+        self.room_group_name = self.scope['url_route']['kwargs']['group_name']
 
-        async_to_sync(self.channel_layer.group_add)(
+        # احراز هویت با توکن JWT
+        token = self.scope['query_string'].decode().split('token=')[-1]
+        user = await self.authenticate_user(token)
+        if not user:
+            await self.close()
+            return
+
+        self.user = user
+
+        # اضافه کردن به گروه
+        await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
         )
 
-        self.accept()
+        await self.accept()
 
-        self.send({'type': 'chat_connected', 'message': 'your connected'})
+        # ارسال پیام خوش‌آمدگویی
+        current_time = timezone.now().strftime("%H:%M:%S")
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': f'سلام {self.user.username} الان ساعت {current_time} است'
+        }))
 
+    @database_sync_to_async
+    def authenticate_user(self, token):
+        try:
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(token)
+            user = jwt_auth.get_user(validated_token)
+            return user
+        except (InvalidToken, TokenError):
+            return None
 
-    def recive(self,text_data):
-        messageJson = json.loads(text_data)
-        message = messageJson['message']
+    async def disconnect(self, close_code):
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
 
-        async_to_sync(self.channel_layer.group_send)(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message
-
-            }
-        )
-
-    def chat_message(self,event):
-        message = event['message']
-        self.send({'type': 'chat_message', 'message': message})
+    async def chat_message(self, event):
+        # ارسال پیام به کلاینت
+        await self.send(text_data=json.dumps({
+            'type': 'chat_message',
+            'message': event['message']
+        }))

@@ -11,4 +11,5 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', RegisterAPIView.as_view(), name='register'),
     path('start-chat/', StartChatView.as_view(), name='start-chat'),
+    path('send-test-message/', SendTestMessageView.as_view(), name='send-test-message'),
 ]

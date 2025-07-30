@@ -52,7 +52,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
     async def chat_message(self, event):
-        message = event['message']
         current_time = timezone.now().strftime("%H:%M:%S")
         await self.send(text_data=json.dumps({
             'type': 'chat_message',

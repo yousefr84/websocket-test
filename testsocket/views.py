@@ -1,5 +1,7 @@
 import uuid
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import status
@@ -101,3 +103,52 @@ class StartChatView(APIView):
             'websocket_url': f'ws://{request.get_host()}/ws/chat/{group_name}/',
             'message': f'سلام {request.user.username} الان ساعت {current_time} است'
         })
+
+class SendTestMessageView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        security=[{'Bearer': []}],
+        operation_description="ارسال پیام 'test' به گروه چت مشخص‌شده از طریق WebSocket",
+        manual_parameters=[
+            openapi.Parameter(
+                'group_name',
+                openapi.IN_QUERY,
+                description="نام گروه چت (مثل chat_a1b2c3d4)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'message': openapi.Schema(type=openapi.TYPE_STRING, description='پیام موفقیت')
+                }
+            ),
+            400: openapi.Response('گروه یافت نشد یا پارامتر نامعتبر'),
+            401: openapi.Response('نیازمند توکن JWT معتبر')
+        }
+    )
+    def get(self, request):
+        group_name = request.query_params.get('group_name')
+
+        if not group_name:
+            return Response({'error': 'group_name is required'}, status=400)
+
+        # بررسی وجود گروه
+        if not ChatGroup.objects.filter(name=group_name, creator=request.user).exists():
+            return Response({'error': 'Group not found or you are not the creator'}, status=400)
+
+        # ارسال پیام به گروه از طریق WebSocket
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'chat_message',
+                'message': 'test'
+            }
+        )
+
+        return Response({'message': 'Test message sent to WebSocket group'}, status=200)

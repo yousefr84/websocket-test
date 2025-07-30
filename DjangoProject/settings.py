@@ -25,8 +25,26 @@ SECRET_KEY = 'django-insecure-!vb%-=6f8=y4vlbzjr+x@x-a*zc2tou8nuq2w0*m(nm3=0hi5e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['*']
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = ['*']
+CORS_ALLOW_METHODS = [
+    "OPTIONS",
+    "POST",
+    "GET",
+    "PATCH",
+    "PUT",
+    'DELETE',
+]
+CORS_ALLOW_HEADERS = [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "X-CSRFToken",
+]
 
 # Application definition
 

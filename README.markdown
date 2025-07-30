@@ -1,6 +1,6 @@
 # Django WebSocket Learning Project
 
-This project is built for educational purposes to learn and implement **WebSocket** functionality using **Django Channels** alongside **Django REST Framework (DRF)**. The goal is to create a simple chat system where users can register, log in, and start a real-time chat session via WebSocket. Upon starting a chat, a unique group is created and stored in the database, and a welcome message like `hi <username> now is <current_time>` is sent to the user in real-time via WebSocket.
+This project is built for educational purposes to learn and implement **WebSocket** functionality using **Django Channels** alongside **Django REST Framework (DRF)**. The goal is to create a simple chat system where users can register, log in, and start a real-time chat session via WebSocket. Upon starting a chat, a unique group is created and stored in the database, and a welcome message like `hi <username> now is <current_time>` is sent to the user in real-time via WebSocket. Additionally, users can trigger a test message to be sent to the WebSocket group.
 
 ## Table of Contents
 - [Features](#features)
@@ -13,6 +13,7 @@ This project is built for educational purposes to learn and implement **WebSocke
   - [Login (Obtain JWT Token)](#login-obtain-jwt-token)
   - [Refresh JWT Token](#refresh-jwt-token)
   - [Start Chat (Create WebSocket Group)](#start-chat-create-websocket-group)
+  - [Send Test Message to WebSocket](#send-test-message-to-websocket)
 - [WebSocket Usage](#websocket-usage)
 - [Frontend Integration Guide](#frontend-integration-guide)
 - [Testing with Postman](#testing-with-postman)
@@ -25,7 +26,8 @@ This project is built for educational purposes to learn and implement **WebSocke
 - Real-time messaging via **WebSocket** using **Django Channels**.
 - API documentation with **Swagger** (via `drf-yasg`).
 - Upon starting a chat or connecting to WebSocket, users receive a real-time message: `hi <username> now is <current_time>`.
-- Sending a message via WebSocket returns the current time: `now is <current_time>` or `<username> now is <current_time>`.
+- Sending a message via WebSocket returns the current time: `now is <current_time>` or `<username>: <message> (at <current_time>)` for group messages.
+- A dedicated API to send a `test` message to the WebSocket group.
 
 ## Technologies Used
 - **Django**: Web framework for building the backend.
@@ -211,7 +213,7 @@ The project provides the following API endpoints for frontend integration. All e
     {
         "group_name": "chat_a1b2c3d4",
         "websocket_url": "ws://127.0.0.1:8000/ws/chat/chat_a1b2c3d4/",
-        "message": "سلام username الان ساعت 09:26:00 است"
+        "message": "سلام username الان ساعت 09:27:00 است"
     }
     ```
   - **401 Unauthorized** (invalid or missing token):
@@ -220,6 +222,48 @@ The project provides the following API endpoints for frontend integration. All e
         "detail": "Authentication credentials were not provided"
     }
     ```
+
+### Send Test Message to WebSocket
+- **Endpoint**: `GET /api/send-test-message/?group_name=<group_name>`
+- **Description**: Send a `test` message to the specified WebSocket group. The group must exist and the user must be its creator.
+- **Headers**:
+  ```
+  Authorization: Bearer your-jwt-access-token
+  ```
+- **Query Parameters**:
+  - `group_name`: The name of the chat group (e.g., `chat_a1b2c3d4`), obtained from `/api/start-chat/`.
+- **Response**:
+  - **200 OK**:
+    ```json
+    {
+        "message": "Test message sent to WebSocket group"
+    }
+    ```
+  - **400 Bad Request** (e.g., missing group_name or invalid group):
+    ```json
+    {
+        "error": "group_name is required"
+    }
+    ```
+    or
+    ```json
+    {
+        "error": "Group not found or you are not the creator"
+    }
+    ```
+  - **401 Unauthorized** (invalid or missing token):
+    ```json
+    {
+        "detail": "Authentication credentials were not provided"
+    }
+    ```
+- **WebSocket Effect**: Sends the message `test` to the group, which clients receive as:
+  ```json
+  {
+      "type": "chat_message",
+      "message": "username: test (at 09:27:00)"
+  }
+  ```
 
 ## WebSocket Usage
 The WebSocket endpoint is used for real-time messaging. After calling the `/api/start-chat/` endpoint, connect to the provided `websocket_url` to receive real-time messages.
@@ -235,7 +279,7 @@ The WebSocket endpoint is used for real-time messaging. After calling the `/api/
   ```json
   {
       "type": "chat_message",
-      "message": "hi username now is 09:26:00"
+      "message": "hi username now is 09:27:00"
   }
   ```
 - **Sending a Message**:
@@ -244,15 +288,14 @@ The WebSocket endpoint is used for real-time messaging. After calling the `/api/
     ```json
     {
         "type": "chat_message",
-        "message": "now is 09:26:00"
+        "message": "now is 09:27:00"
     }
     ```
-  - **Group Message Handling**:
-    If a message is sent to the group (via `channel_layer.group_send`), the response will be:
+  - **Group Message Handling** (e.g., triggered by `/api/send-test-message/`):
     ```json
     {
         "type": "chat_message",
-        "message": "username now is 09:26:00"
+        "message": "username: test (at 09:27:00)"
     }
     ```
 
@@ -271,15 +314,21 @@ For frontend developers integrating with this backend:
 3. **Start a Chat**:
    - Send a `POST` request to `/api/start-chat/` with the `Authorization: Bearer <access-token>` header.
    - Extract `group_name` and `websocket_url` from the response.
-   - The response includes a `message` (e.g., `سلام username الان ساعت 09:26:00 است`) that can be displayed if needed.
+   - The response includes a `message` (e.g., `سلام username الان ساعت 09:27:00 است`) that can be displayed if needed.
 
-4. **Connect to WebSocket**:
+4. **Send Test Message**:
+   - Send a `GET` request to `/api/send-test-message/?group_name=<group_name>` with the `Authorization: Bearer <access-token>` header.
+   - Use the `group_name` obtained from `/api/start-chat/`.
+   - Expect a response confirming the message was sent, and the WebSocket clients in the group will receive: `username: test (at <current_time>)`.
+
+5. **Connect to WebSocket**:
    - Connect to the `websocket_url` provided by `/api/start-chat/` (e.g., `ws://127.0.0.1:8000/ws/chat/chat_a1b2c3d4/`).
    - Ensure the `access` cookie (containing the JWT access token) is included in the WebSocket request. Most WebSocket clients (e.g., browsers) automatically send cookies for the same domain.
    - Upon connection, expect a welcome message: `hi <username> now is <current_time>`.
-   - If you send a message to the WebSocket, expect a response with the current time (`now is <current_time>`) or a group message (`<username> now is <current_time>`).
+   - If you send a message to the WebSocket, expect a response with the current time (`now is <current_time>`).
+   - When the `/api/send-test-message/` endpoint is called, expect a group message: `<username>: test (at <current_time>)`.
 
-5. **Handle Token Expiry**:
+6. **Handle Token Expiry**:
    - If the access token expires (401 Unauthorized), use the refresh token to get a new access token via `/api/token/refresh/`.
    - Update the `access` cookie with the new token for subsequent WebSocket connections.
 
@@ -309,8 +358,27 @@ To test the APIs and WebSocket:
      Cookie: access=your-jwt-access-token
      ```
    - Alternatively, if you used Postman for the `/api/token/` request, the `access` cookie is automatically included if cookies are enabled.
-   - Connect and verify the welcome message: `hi <username> now is 09:26:00`.
-   - Send a test message (e.g., `{"message": "test"}`) and verify the response: `now is 09:26:00`.
+   - Connect and verify the welcome message: `hi <username> now is 09:27:00`.
+   - Send a test message (e.g., `{"message": "test"}`) and verify the response: `now is 09:27:00`.
+
+5. **Send Test Message**:
+   - Send a `GET` request to `http://127.0.0.1:8000/api/send-test-message/?group_name=chat_a1b2c3d4` with header:
+     ```
+     Authorization: Bearer your-jwt-access-token
+     ```
+   - Expect a response:
+     ```json
+     {
+         "message": "Test message sent to WebSocket group"
+     }
+     ```
+   - In the WebSocket connection (in Postman), verify the received message:
+     ```json
+     {
+         "type": "chat_message",
+         "message": "username: test (at 09:27:00)"
+     }
+     ```
 
 ## Contributing
 Contributions are welcome! If you want to contribute:
